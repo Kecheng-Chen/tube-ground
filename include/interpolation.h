@@ -8,7 +8,7 @@
 
 #include <deal.II/base/function_lib.h>
 
-DEAL_II_DISABLE_EXTRA_DIAGNOSTICS
+DEAL_II_DISABLE_EXTRA_DIAGNOSTICS //silence the boost warning
 #include <boost/iostreams/filtering_stream.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <boost/iostreams/device/file.hpp>

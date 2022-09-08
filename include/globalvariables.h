@@ -8,17 +8,29 @@
 
 namespace EquationData {
 
+const double hz_ff = 48; // W/m.K
+//const double hz_ff = 0;
+const double bgs = 48/2; // W/m.K
+const double k = 0.77; // W/m.K
+const double A = 0.0013; // m2
+const double u = 0.24; // m/s
+const double rho = 1000; // kg/m3
+const double Cp = 4187; // J/kgK
+const double fD = 0.01; // J/kgK
+const double d = 0.04;
+
 double g_perm = 1e-6 / 1000 / 9.8;  // permeability
 const double g_c_T = 1.2e6;         // heat capacity of the mixture
 const double g_lam = 1.2;           // heat conductivity
 const double g_c_w = 1e6;           // heat capacity of water
 const double g_B_w = 1e5;           // bulk modulus of pores
 
-// Pressure seetings
+const int start_point_id = 2;
+const std::vector<double> start_point[start_point_id] = {{0.042164,0,0}};
 
-const int g_num_P_bnd_id = 8;  // numbers of  pressure boudnary condition id
-const int g_P_bnd_id[g_num_P_bnd_id] = {
-    1, 2, 4, 5, 7, 8, 11311, 11312};  // pressure boundary condition id
+// Pressure seetings
+const int g_num_P_bnd_id = 0;  // numbers of  pressure boudnary condition id
+const int g_P_bnd_id[g_num_P_bnd_id] = {};  // pressure boundary condition id
 
 const double g_Pb_top = 0;           // pressure at the top of model
 const double g_P_grad = 1000 * 9.8;  // pressure gradient in vertial direction
@@ -26,14 +38,14 @@ const double g_P_grad_x = 1000 * 9.8 * 1 / 2000;  // 2000m drops ten meters
 
 // Velocity settings
 
-const int g_num_QP_bnd_id = 4;  // numbers of velocity boudnary condition id
-const int g_QP_bnd_id[g_num_QP_bnd_id] = {2, 5, 7, 8};  // velocity  boundary
+const int g_num_QP_bnd_id = 0;  // numbers of velocity boudnary condition id
+const int g_QP_bnd_id[g_num_QP_bnd_id] = {};  // velocity  boundary
 
 const double g_Qb_lateral = 0;  // wellbore temperature
 
 // Temperature seetings
-const int g_num_T_bnd_id = 10;
-const int g_T_bnd_id[g_num_T_bnd_id] = {23, 3, 1, 2, 4, 5, 7, 8, 11311, 11312};
+const int g_num_T_bnd_id = 0;
+const int g_T_bnd_id[g_num_T_bnd_id] = {};
 
 const double g_Tb_well = 273.15 + 25;  // wellbore temperature
 const double g_Tb_top = 273.15 + 15;   // termperature at the top of model
@@ -46,8 +58,8 @@ const double g_T_seabed_grad = (g_Tb_seabed_bottom - g_Tb_seabed_top) / 100;
 
 // Heat flow rate settins
 
-const int g_num_QT_bnd_id = 1;  // numbers of velocity boudnary condition id
-const int g_QT_bnd_id[g_num_QT_bnd_id] = {6};  // velocity  boundary
+const int g_num_QT_bnd_id = 0;  // numbers of velocity boudnary condition id
+const int g_QT_bnd_id[g_num_QT_bnd_id] = {};  // velocity  boundary
 
 const double g_QT_well = 0;  // wellbore temperature
 const double g_QT_top = -g_lam * g_T_grad;
@@ -67,12 +79,10 @@ const bool is_linspace = false;
 //     2970, 3060, 3150, 3240, 3330, 3420, 3510, 3600};
 
 // for cyclic
-const int g_n_time_step = 13;             // simulation time
-const double g_total_time = 86400 * 360;  // simulation time
-const double g_period = 86400 * 360;      // for periodic load
-std::vector<double> g_time_sequence = {0,   30,  60,  90,  120, 150, 180,
-                                       210, 240, 270, 300, 330, 360};
-
+const int g_n_time_step = 24*6*12;             // simulation time
+const double g_total_time = 86400*6;  // simulation time
+const double g_period = 15;      // for periodic load
+std::vector<double> g_time_sequence = {0,0.00001,0.00002,0.00003,0.00004,0.00005,0.00006,0.00007,0.00008,0.00009,0.0001,0.000200000000000000,0.000300000000000000,0.000400000000000000,0.000500000000000000,0.000600000000000000,0.000700000000000000,0.000800000000000000,0.000900000000000000,0.00100000000000000,0.00110000000000000,0.00120000000000000,0.00130000000000000,0.00140000000000000,0.00150000000000000,0.00160000000000000,0.00170000000000000,0.00180000000000000,0.00190000000000000,0.00200000000000000,0.00210000000000000,0.00220000000000000,0.00230000000000000,0.00240000000000000,0.00250000000000000,0.00260000000000000,0.00270000000000000,0.00280000000000000,0.00290000000000000,0.00300000000000000,0.00310000000000000,0.00320000000000000,0.00330000000000000,0.00340000000000000,0.00350000000000000,0.00360000000000000,0.00370000000000000,0.00380000000000000,0.00390000000000000,0.00400000000000000,0.00410000000000000,0.00420000000000000,0.00430000000000000,0.00440000000000000,0.00450000000000000,0.00460000000000000,0.00470000000000000,0.00480000000000000,0.00490000000000000,0.00500000000000000,0.00510000000000000,0.00520000000000000,0.00530000000000000,0.00540000000000000,0.00550000000000000,0.00560000000000000,0.00570000000000000,0.00580000000000000,0.00590000000000000,0.00600000000000000,0.00610000000000000,0.00620000000000000,0.00630000000000000,0.00640000000000000,0.00650000000000000,0.00660000000000000,0.00670000000000000,0.00680000000000000,0.00690000000000000,0.00700000000000000,0.00710000000000000,0.00720000000000000,0.00730000000000000,0.00740000000000000,0.00750000000000000,0.00760000000000000,0.00770000000000000,0.00780000000000000,0.00790000000000000,0.00800000000000000,0.00810000000000000,0.00820000000000000,0.00830000000000000,0.00840000000000000,0.00850000000000000,0.00860000000000000,0.00870000000000000,0.00880000000000000,0.00890000000000000,0.00900000000000000,0.00910000000000000,0.00920000000000000,0.00930000000000000,0.00940000000000000,0.00950000000000000,0.00960000000000000,0.00970000000000000,0.00980000000000000,0.00990000000000000,0.0100000000000000,0.0101000000000000,0.0102000000000000,0.0103000000000000,0.0104000000000000,0.0105000000000000,0.0106000000000000,0.0107000000000000,0.0108000000000000,0.0109000000000000,0.0110000000000000,0.0111000000000000,0.0112000000000000,0.0113000000000000,0.0114000000000000,0.0115000000000000,0.0116000000000000,0.0117000000000000,0.0118000000000000,0.0119000000000000,0.0120000000000000,0.0121000000000000,0.0122000000000000,0.0123000000000000,0.0124000000000000,0.0125000000000000,0.0126000000000000,0.0127000000000000,0.0128000000000000,0.0129000000000000,0.0130000000000000,0.0131000000000000,0.0132000000000000,0.0133000000000000,0.0134000000000000,0.0135000000000000,0.0136000000000000,0.0137000000000000,0.0138000000000000,0.0139000000000000,0.0140000000000000,0.0141000000000000,0.0142000000000000,0.0143000000000000,0.0144000000000000,0.0145000000000000,0.0146000000000000,0.0147000000000000,0.0148000000000000,0.0149000000000000,0.0150000000000000,0.0151000000000000,0.0152000000000000,0.0153000000000000,0.0154000000000000,0.0155000000000000,0.0156000000000000,0.0157000000000000,0.0158000000000000,0.0159000000000000,0.0160000000000000,0.0161000000000000,0.0162000000000000,0.0163000000000000,0.0164000000000000,0.0165000000000000,0.0166000000000000,0.0167000000000000,0.0168000000000000,0.0169000000000000,0.0170000000000000,0.0171000000000000,0.0172000000000000,0.0173000000000000,0.0174000000000000,0.0175000000000000,0.0176000000000000,0.0177000000000000,0.0178000000000000,0.0179000000000000,0.0180000000000000,0.0181000000000000,0.0182000000000000,0.0183000000000000,0.0184000000000000,0.0185000000000000,0.0186000000000000,0.0187000000000000,0.0188000000000000,0.0189000000000000,0.0190000000000000,0.0191000000000000,0.0192000000000000,0.0193000000000000,0.0194000000000000,0.0195000000000000,0.0196000000000000,0.0197000000000000,0.0198000000000000,0.0199000000000000,0.0200000000000000,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1,1.1,1.2,1.3,1.4,1.5,1.6,1.7,1.8,1.9,2};
 // // for const
 // const int g_n_time_step = 10;             // simulation time
 // const double g_total_time = 86400 * 180;  // simulation time
@@ -80,21 +90,22 @@ std::vector<double> g_time_sequence = {0,   30,  60,  90,  120, 150, 180,
 // std::vector<double> g_time_sequence = {0, 1, 2, 7, 14, 30, 60, 90, 120, 180};
 
 const char time_unit = 'd';
-const unsigned int n_g_P_max_iteration = 1000;
-const unsigned int n_g_T_max_iteration = 4000;
-const double g_P_tol_residual = 1e-8;
-const double g_T_tol_residual = 1e-10;
+const unsigned int n_g_P_max_iteration = 10000;
+const unsigned int n_g_T_max_iteration = 100000;
+const double g_P_tol_residual = 1e-6;
+const double g_T_tol_residual = 1e-6;
 
 // dimention of the input data file (parameters_for_interpolation.txt in
 // inputfiles is used in the example)
 const int dimension = 3;
 // dimension in x, y and z directions
-std::string mesh_file_name = "inputfiles/new_build.msh";
+std::string mesh_file_name = "inputfiles/test3.msh";
+std::string mesh_file_name_line = "inputfiles/test4.msh";
 std::string file_name_interpolation =
     "inputfiles/parameters_for_interpolation.txt";
 // number of sample point in x directin, y direction and z direction
-const int dimension_x = 40;
-const int dimension_y = 20;
-const int dimension_z = 10;
+const int dimension_x = 2;
+const int dimension_y = 2;
+const int dimension_z = 7;
 
 }  // namespace EquationData
