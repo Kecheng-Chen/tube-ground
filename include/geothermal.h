@@ -670,8 +670,8 @@ void CoupledTH<dim>::assemble_T_system() {
       // get the values at gauss point old solution from the system
       if (time < 1e-8) {
         fe_values_P.get_function_gradients(initial_P_solution, old_P_sol_grads);
-        cell->get_dof_values(initial_T_solution, old_T_sol_values_nodal);
-        //old_T_sol_values_nodal = 273.15 + 18;
+        //cell->get_dof_values(initial_T_solution, old_T_sol_values_nodal);
+        old_T_sol_values_nodal = 273.15 + 18;
       } else {
         fe_values_P.get_function_gradients(old_P_locally_relevant_solution,
                                          old_P_sol_grads);
@@ -790,16 +790,41 @@ void CoupledTH<dim>::assemble_T_system() {
     ++cell_P;
   }
 
+  double temp_u;
+  if (time>172800) {
+    temp_u=0;
+  } else {
+    temp_u=EquationData::u;
+  }
+
   typename DoFHandler<dim-2,dim>::active_cell_iterator cell_line = dof_handler_line.begin_active(), endc_line = dof_handler_line.end();
   for (; cell_line != endc_line; ++cell_line) {
     cell_line->get_dof_indices(line_local_dof_indices);
     fe_line_values.reinit(cell_line);
+    Point<3> &v0 = cell_line->vertex(fe_line.system_to_component_index(0).second);
+    Point<3> &v1 = cell_line->vertex(fe_line.system_to_component_index(1).second);
+    double h_ele = sqrt(pow(v0(0)-v1(0),2)+pow(v0(1)-v1(1),2)+pow(v0(2)-v1(2),2));
+    double Pe = temp_u * h_ele / EquationData::k;
+    double alpha = cosh(Pe/2)/sinh(Pe/2) - 2/Pe;
+
     for (unsigned int q = 0; q < n_q_points_line; ++q) {
       for (unsigned int i = 0; i < dofs_per_line; ++i) {
-        const double phi_i_line = fe_line_values.shape_value(i, q);
+        const double phi_i_line2 = fe_line_values.shape_value(i, q);
         const Tensor<1, dim> grad_phi_i_line = fe_line_values.shape_grad(i, q);
         types::global_dof_index found_dof_i_Ts = dof_dof_map_Ts.at(line_local_dof_indices[i]);
         types::global_dof_index found_dof_i_Ttu = dof_dof_map_Ttu.at(line_local_dof_indices[i]);
+        int formula_i;
+        if (dof_dof_map_line.find(found_dof_i_Ttu)!=dof_dof_map_line.end()) {
+          if (dof_dof_map_line.at(found_dof_i_Ttu)==dof_dof_map_Ttu.at(line_local_dof_indices[1-i])) {
+            formula_i=1;
+          } else {
+            formula_i=2;
+          }
+        } else {
+          formula_i=2;
+        }
+        const double phi_i_line = fe_line_values.shape_value(i, q)+pow(-1,formula_i)*alpha/2;
+
         for (unsigned int j = 0; j < dofs_per_line; ++j) {
           const double phi_j_line = fe_line_values.shape_value(j, q);
           const Tensor<1, dim> grad_phi_j_line = fe_line_values.shape_grad(j, q);
@@ -827,17 +852,12 @@ void CoupledTH<dim>::assemble_T_system() {
           //}
 
           // mass matrix
-          T_system_matrix.add(found_dof_i_Ts, found_dof_j_Ts, (phi_i_line * phi_j_line * EquationData::bgs * time_step / EquationData::g_c_T * fe_line_values.JxW(q)));
-          T_system_matrix.add(found_dof_i_Ts, found_dof_j_Ttu, (-phi_i_line * phi_j_line * EquationData::bgs * time_step / EquationData::g_c_T * fe_line_values.JxW(q)));
+          T_system_matrix.add(found_dof_i_Ts, found_dof_j_Ts, (phi_i_line2 * phi_j_line * EquationData::bgs * time_step / EquationData::g_c_T * fe_line_values.JxW(q)));
+          T_system_matrix.add(found_dof_i_Ts, found_dof_j_Ttu, (-phi_i_line2 * phi_j_line * EquationData::bgs * time_step / EquationData::g_c_T * fe_line_values.JxW(q)));
           T_system_matrix.add(found_dof_i_Ttu, found_dof_j_Ts, (-time_step * EquationData::hz_ff * phi_i_line * phi_j_line * fe_line_values.JxW(q)));
           double grad_phi_i_line_1d = sqrt(pow(grad_phi_i_line[0],2)+pow(grad_phi_i_line[1],2)+pow(grad_phi_i_line[2],2));
           double grad_phi_j_line_1d = sqrt(pow(grad_phi_j_line[0],2)+pow(grad_phi_j_line[1],2)+pow(grad_phi_j_line[2],2));
-          double temp_u;
-          if (time>172800) {
-            temp_u=0;
-          } else {
-            temp_u=EquationData::u;
-          }
+          
           if (distance<1) {
             T_system_matrix.add(found_dof_i_Ttu, found_dof_j_Ttu, ((time_step * EquationData::hz_ff+EquationData::g_c_w * EquationData::A) * phi_i_line * phi_j_line * fe_line_values.JxW(q)
               + EquationData::g_c_w * EquationData::A * time_step * temp_u * phi_i_line * (-grad_phi_j_line_1d) * fe_line_values.JxW(q)
@@ -923,8 +943,8 @@ void CoupledTH<dim>::linear_solve_T() {
   LA::MPI::Vector distributed_T_solution(locally_owned_dofs_T, mpi_communicator);
 
   SolverControl solver_control(
-      //100000,
-      std::max<std::size_t>(n_T_max_iteration, T_system_rhs.size()),
+      100000,
+      //std::max<std::size_t>(n_T_max_iteration, T_system_rhs.size()),
       T_tol_residual * T_system_rhs.l2_norm(), true, true);  // setting for solver
   // pcout<< "\n the l1 norm of the T_system is"<< T_system_matrix.l1_norm() <<
   //   "\n";
