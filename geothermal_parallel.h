@@ -709,8 +709,8 @@ void CoupledTH<dim>::assemble_T_system() {
       // get the values at gauss point old solution from the system
       if (time < 1e-8) {
         fe_values_P.get_function_gradients(initial_P_solution, old_P_sol_grads);
-        // cell->get_dof_values(initial_T_solution, old_T_sol_values_nodal);
-        // old_T_sol_values_nodal = 273.15 + 18;
+        //cell->get_dof_values(initial_T_solution, old_T_sol_values_nodal);
+        old_T_sol_values_nodal = 273.15 + 18;
       } else {
         fe_values_P.get_function_gradients(old_P_locally_relevant_solution,
                                          old_P_sol_grads);
@@ -733,15 +733,6 @@ void CoupledTH<dim>::assemble_T_system() {
         EquationData::g_perm = data_interpolation.value(T_quadrature_coord[0],
                                                         T_quadrature_coord[1],
                                                         T_quadrature_coord[2]);
-        double lambda_ghe;
-        double rho_ghe;
-        if (pow(T_quadrature_coord[0],2)+pow(T_quadrature_coord[1],2)>0.01) {
-          lambda_ghe = 2.4;
-          rho_ghe = 1280*2140;
-        } else {
-          lambda_ghe = 2.5;
-          rho_ghe = 879*2640;
-        }
 
         for (unsigned int i = 0; i < dofs_per_cell; ++i) {
           const Tensor<1, dim> grad_phi_i_T = fe_values.shape_grad(i, q);
@@ -756,21 +747,16 @@ void CoupledTH<dim>::assemble_T_system() {
               T_cell_matrix(i, j) += (phi_i_T * phi_j_T * fe_values.JxW(q));
               // stiff matrix
               T_cell_matrix(i, j) +=
-                time_step * (lambda_ghe / rho_ghe *
+                time_step * (EquationData::g_lam / EquationData::g_c_T *
                              grad_phi_i_T * grad_phi_j_T * fe_values.JxW(q));
               // conv matrix
               T_cell_matrix(i, j) +=
-                time_step * EquationData::g_c_w / rho_ghe *
+                time_step * EquationData::g_c_w / EquationData::g_c_T *
                 phi_i_T *
                 (-EquationData::g_perm *
                  (old_P_sol_grads[index] + (Point<dim>(0, 0, 1)) * EquationData::g_P_grad) *
                  grad_phi_j_T * fe_values.JxW(q));
-              if (time < 1e-8) {
-                Point<3> &vj = cell->vertex(fe_T.system_to_component_index(j).second);
-                T_cell_rhs(i) += abs(EquationData::g_Tb_top + EquationData::g_T_grad * (0. - vj(2))) * phi_j_T * phi_i_T * fe_values.JxW(q);
-              } else {
-                T_cell_rhs(i) += old_T_sol_values_nodal(j) * phi_j_T * phi_i_T * fe_values.JxW(q);
-              }
+              T_cell_rhs(i) += old_T_sol_values_nodal(j) * phi_j_T * phi_i_T * fe_values.JxW(q);
             }
           }
           if (component_i==0) {
@@ -779,13 +765,7 @@ void CoupledTH<dim>::assemble_T_system() {
           if (std::find(dof_appeared_Ttu.begin(), dof_appeared_Ttu.end(), T_local_dof_indices[i]) != dof_appeared_Ttu.end() &&
             std::find(dof_appeared_local.begin(), dof_appeared_local.end(), T_local_dof_indices[i]) == dof_appeared_local.end()){
             dof_appeared_local.push_back(T_local_dof_indices[i]);
-            std::pair<types::global_dof_index, double> vd2;
-            if (time < 1e-8) {
-              Point<3> &vi = cell->vertex(fe_T.system_to_component_index(i).second);
-              vd2 = std::make_pair(T_local_dof_indices[i],abs(EquationData::g_Tb_top + EquationData::g_T_grad * (0. - vi(2))));
-            } else {
-              vd2 = std::make_pair(T_local_dof_indices[i],old_T_sol_values_nodal(i));
-            }
+            std::pair<types::global_dof_index, double> vd2 = std::make_pair(T_local_dof_indices[i],old_T_sol_values_nodal(i));
             old_Ttu.emplace(vd2);
           }
         }
@@ -817,17 +797,11 @@ void CoupledTH<dim>::assemble_T_system() {
                 EquationData::g_perm = data_interpolation.value(
                     T_face_quadrature_coord[0], T_face_quadrature_coord[1],
                     T_face_quadrature_coord[2]);
-                double rho_ghe;
-                if (pow(T_face_quadrature_coord[0],2)+pow(T_face_quadrature_coord[1],2)>0.01) {
-                  rho_ghe = 1280*2140;
-                } else {
-                  rho_ghe = 879*2640;
-                }
 
                 for (unsigned int i = 0; i < dofs_per_cell; ++i) {
                   const unsigned int component_i = fe_T.face_system_to_component_index(i,face_no).first;
                   if (component_i==0) {
-                    T_cell_rhs(i) += -time_step / rho_ghe *
+                    T_cell_rhs(i) += -time_step / EquationData::g_c_T *
                                    fe_face_values.shape_value(i, q) *
                                    QT_bd_values[q] * fe_face_values.JxW(q);
                   }
@@ -873,7 +847,6 @@ void CoupledTH<dim>::assemble_T_system() {
     double alpha = cosh(Pe/2)/sinh(Pe/2) - 2/Pe;
 
     for (unsigned int q = 0; q < n_q_points_line; ++q) {
-      const auto T_quadrature_coord = fe_line_values.quadrature_point(q);
       for (unsigned int i = 0; i < dofs_per_line; ++i) {
         const double phi_i_line2 = fe_line_values.shape_value(i, q);
         const Tensor<1, dim> grad_phi_i_line = fe_line_values.shape_grad(i, q);
@@ -945,20 +918,19 @@ void CoupledTH<dim>::assemble_T_system() {
 
           double hz_ff=EquationData::hz_ff;
           double bgs=EquationData::bgs;
-          double rho_ghe;
-          if (pow(T_quadrature_coord[0],2)+pow(T_quadrature_coord[1],2)>0.01) {
-            rho_ghe = 1280*2140;
-          } else {
-            rho_ghe = 879*2640;
-          }
-
+          //double if_stop;
+          //if (time>172800) {
+          //  if_stop=0;
+          //} else {
+          //  if_stop=1;
+          //}
 
           // mass matrix
           if (exist_Ts_i && exist_Ts_j) {
-            T_system_matrix.add(found_dof_i_Ts, found_dof_j_Ts, (phi_i_line2 * phi_j_line * bgs * time_step / rho_ghe * fe_line_values.JxW(q)));
+            T_system_matrix.add(found_dof_i_Ts, found_dof_j_Ts, (phi_i_line2 * phi_j_line * bgs * time_step / EquationData::g_c_T * fe_line_values.JxW(q)));
           }
           if (exist_Ts_i && exist_Ttu_j) {
-            T_system_matrix.add(found_dof_i_Ts, found_dof_j_Ttu, (-phi_i_line2 * phi_j_line * bgs * time_step / rho_ghe * fe_line_values.JxW(q)));
+            T_system_matrix.add(found_dof_i_Ts, found_dof_j_Ttu, (-phi_i_line2 * phi_j_line * bgs * time_step / EquationData::g_c_T * fe_line_values.JxW(q)));
           }
           if (exist_Ttu_i && exist_Ts_j) {
             T_system_matrix.add(found_dof_i_Ttu, found_dof_j_Ts, (-time_step * hz_ff * phi_i_line * phi_j_line * fe_line_values.JxW(q)));

@@ -8,9 +8,11 @@
 
 namespace EquationData {
 
-const double hz_ff = 48; // W/m.K
+const double lambda_tube = 10;
+//const double lambda_tube = 10*50;
+const double hz_ff = 10; // W/m.K
 //const double hz_ff = 0;
-const double bgs = 48/2; // W/m.K
+const double bgs = 10/2; // W/m.K
 const double k = 0.77; // W/m.K
 const double A = 0.0013; // m2
 const double u = 0.24; // m/s
