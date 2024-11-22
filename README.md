@@ -1,4 +1,5 @@
 # Coupling between 1D tube and 3D ground
+https://github.com/user-attachments/assets/848fc6e7-bde1-4406-8972-fc26487ec8f8
 
 ### Prerequisite packages
 > The following prerequisite packages can be found in the docker image:
